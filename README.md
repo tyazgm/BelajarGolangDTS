@@ -1,2 +1,2 @@
 # BelajarGolangDTS
-Scalable Web Service with GolangDigital Talent Scholarship by Kominfo with Hacktiv8
+Scalable Web Service with Golang Digital Talent Scholarship by Kominfo with Hacktiv8
