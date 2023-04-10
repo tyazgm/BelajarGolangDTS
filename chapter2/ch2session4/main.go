@@ -17,8 +17,6 @@ type Book struct {
 	Price  int
 }
 
-var BookDatas = []Book{}
-
 var db *sql.DB
 
 func main() {
