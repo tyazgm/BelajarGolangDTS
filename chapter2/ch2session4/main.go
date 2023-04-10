@@ -1,44 +1,64 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
-	_ "github.com/lib/pq"
+	// _ "github.com/lib/pq"
+	"gorm.io/driver/postgres"
 )
 
 type Book struct {
-	BookID string
-	Title  string
-	Author string
-	Price  int
+	BookID   string `gorm:"primary key" json:"book_id"`
+	Title    string `gorm:"not null;unique;varchar(255)" json:"title"`
+	Price    int    `gorm:"not null" json:"price"`
+	AuthorID int    `json:"author_id"`
 }
 
-var db *sql.DB
+type Author struct {
+	ID    int    `gorm:"primary key" json:"author_id"`
+	Name  string `gorm:"not null;varchar(255)" json:"author_name"`
+	Books []Book `json:"author_books"`
+}
+
+var db *gorm.DB
 
 func main() {
+	DatabaseInit()
 	StartServer()
 }
 
-func StartServer() *gin.Engine {
+func DatabaseInit() {
 	var err error
 
-	db, err = sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=bookDB sslmode=disable")
+	db, err = gorm.Open(postgres.Open("host=localhost port=5432 user=postgres password=postgres dbname=gormdb sslmode=disable"), &gorm.Config{})
 
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.Ping()
+	sqlDB, err := db.DB()
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = sqlDB.Ping()
 
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println(db)
+
+	db.AutoMigrate(Author{}, Book{})
+}
+
+func StartServer() *gin.Engine {
 
 	router := gin.Default()
 
@@ -59,19 +79,17 @@ func CreateBook(ctx *gin.Context) {
 	err := ctx.ShouldBindJSON(&newBook)
 
 	if err != nil {
-		ctx.AbortWithError(http.StatusBadRequest, err)
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
 		return
 	}
 
-	query := "insert into book values($1, $2, $3, $4) returning *"
+	tx := db.Create(&newBook)
 
-	row := db.QueryRow(query, newBook.BookID, newBook.Title, newBook.Author, newBook.Price)
-
-	err = row.Scan(&newBook.BookID, &newBook.Title, &newBook.Author, &newBook.Price)
-
-	if err != nil {
+	if tx.Error != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error": tx.Error.Error(),
 		})
 		return
 	}
@@ -90,43 +108,38 @@ func UpdateBook(ctx *gin.Context) {
 		return
 	}
 
-	query := "update book set title = $1, author = $2, price = $3 where bookid = $4 returning *"
+	tx := db.Clauses(clause.Returning{
+		Columns: []clause.Column{
+			{
+				Name: "book_id",
+			},
+		}}).
+		Where("book_id = ?", bookID).
+		Updates(&bookUpdate)
 
-	rows, err := db.Query(query, &bookUpdate.Title, &bookUpdate.Author, &bookUpdate.Price, &bookUpdate.BookID)
-
-	if err != nil {
+	if tx.Error != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error": tx.Error.Error(),
 		})
 		return
 	}
 
-	books := make([]Book, 0)
-
-	for rows.Next() {
-		var book Book
-		err = rows.Scan(&book.BookID, &book.Title, &book.Author, &book.Price)
-
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-
-		books = append(books, book)
-	}
-
 	ctx.JSON(http.StatusOK, gin.H{
 		"message":       fmt.Sprintf("book with id %v has been succesfully uptaded", bookID),
-		"bookDatas now": books,
+		"bookDatas now": bookUpdate,
 	})
 }
 
 func GetAllBook(ctx *gin.Context) {
-	query := "select * from book"
+	tx := db.Find(&Book{})
 
-	rows, err := db.Query(query)
+	if tx.Error != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": tx.Error.Error(),
+		})
+	}
+
+	rows, err := tx.Rows()
 
 	if err != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
@@ -138,7 +151,7 @@ func GetAllBook(ctx *gin.Context) {
 
 	for rows.Next() {
 		var book Book
-		err = rows.Scan(&book.BookID, &book.Title, &book.Author, &book.Price)
+		err = rows.Scan(&book.BookID, &book.Title, &book.Price, &book.AuthorID)
 
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
@@ -157,15 +170,11 @@ func GetBookByID(ctx *gin.Context) {
 	bookID := ctx.Param("bookID")
 	var bookData Book
 
-	query := "select * from book where bookid=$1 returning *"
+	tx := db.Find(&bookData, bookID)
 
-	row := db.QueryRow(query, bookID)
-
-	err := row.Scan(&bookData.BookID, &bookData.Title, &bookData.Author, &bookData.Price)
-
-	if err != nil {
+	if tx.Error != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error": tx.Error.Error(),
 		})
 		return
 	}
@@ -178,15 +187,11 @@ func DeleteBook(ctx *gin.Context) {
 
 	var deletedBook Book
 
-	query := "delete from book where bookid=$1 returning *"
+	tx := db.Clauses(clause.Returning{}).Delete(&deletedBook, bookID)
 
-	row := db.QueryRow(query, bookID)
-
-	err := row.Scan(&deletedBook.BookID, &deletedBook.Title, &deletedBook.Author, &deletedBook.Price)
-
-	if err != nil {
+	if tx.Error != nil {
 		ctx.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+			"error": tx.Error.Error(),
 		})
 		return
 	}
