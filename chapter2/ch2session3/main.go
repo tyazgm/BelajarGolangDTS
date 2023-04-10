@@ -157,7 +157,7 @@ func GetBookByID(ctx *gin.Context) {
 	bookID := ctx.Param("bookID")
 	var bookData Book
 
-	query := "select * from book where bookid=$1 returning *"
+	query := "select * from book where bookid=$1"
 
 	row := db.QueryRow(query, bookID)
 
