@@ -1,0 +1,97 @@
+definitions:
+  model.Book:
+    properties:
+      author_id:
+        type: integer
+      book_id:
+        type: string
+      price:
+        type: integer
+      title:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Documentation of Books API
+  title: Books API
+  version: "1.0"
+paths:
+  /books:
+    get:
+      description: get all book at database
+      produces:
+      - application/json
+      responses: {}
+      summary: get all book
+      tags:
+      - Books
+    post:
+      consumes:
+      - application/json
+      description: add book to the database
+      parameters:
+      - description: data is mandatory
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/model.Book'
+      produces:
+      - application/json
+      responses: {}
+      summary: add book
+      tags:
+      - Books
+  /books/{bookID}:
+    delete:
+      description: delete book by given ID
+      parameters:
+      - description: bookID you want to delete
+        in: path
+        name: bookID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: delete book
+      tags:
+      - Books
+    get:
+      description: get selected book from database by ID
+      parameters:
+      - description: bookID you want to retrieve
+        in: path
+        name: bookID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: get book by ID
+      tags:
+      - Books
+    put:
+      consumes:
+      - application/json
+      description: update book choosed by ID
+      parameters:
+      - description: bookID you want to update
+        in: path
+        name: bookID
+        required: true
+        type: string
+      - description: data is mandatory
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/model.Book'
+      produces:
+      - application/json
+      responses: {}
+      summary: update book
+      tags:
+      - Books
+swagger: "2.0"
