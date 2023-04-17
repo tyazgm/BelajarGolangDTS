@@ -31,7 +31,7 @@ func (oc *OrderController) CreateOrder(ctx *gin.Context) {
 
 	userID, isExist := ctx.Get("user_id")
 	if !isExist {
-		ctx.AbortWithStatusJSON(http.StatusInternalServerError, model.MyError{
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, model.MyError{
 			Err: model.ErrorInvalidToken.Err,
 		})
 		return
@@ -49,7 +49,25 @@ func (oc *OrderController) CreateOrder(ctx *gin.Context) {
 }
 
 func (oc *OrderController) GetListOrder(ctx *gin.Context) {
+	userID, isExist := ctx.Get("user_id")
+	if !isExist {
+		ctx.AbortWithStatusJSON(http.StatusBadRequest, model.MyError{
+			Err: model.ErrorInvalidToken.Err,
+		})
+		return
+	}
 
+	var userIdString string = userID.(string)
+
+	order, err := oc.orderService.GetList(userIdString)
+	if err != nil {
+		ctx.AbortWithStatusJSON(http.StatusInternalServerError, model.MyError{
+			Err: err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, order)
 }
 func (oc *OrderController) GetOrder(ctx *gin.Context) {
 

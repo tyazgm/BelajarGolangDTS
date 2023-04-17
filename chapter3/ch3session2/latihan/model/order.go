@@ -15,3 +15,9 @@ type OrderCreateResponse struct {
 	UserID string `json:"user_id"`
 	Price  int    `json:"price"`
 }
+
+type OrderGetResponse struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+	Price  int    `json:"price"`
+}

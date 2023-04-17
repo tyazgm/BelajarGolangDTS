@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"latihan/helper"
 	"latihan/model"
 	"latihan/repository"
@@ -32,4 +33,21 @@ func (os *OrderService) Create(request model.OrderCreateRequest, userID string) 
 		UserID: userID,
 		Price:  request.Price,
 	}, err
+}
+
+func (os *OrderService) GetList(userID string) ([]model.OrderGetResponse, error) {
+	orderData, err := os.orderRepository.Get(userID)
+
+	orderDataResponse := make([]model.OrderGetResponse, 0)
+	for _, data := range orderData {
+		orderDataResponse = append(orderDataResponse, model.OrderGetResponse{
+			ID:     data.ID,
+			UserID: data.UserID,
+			Price:  data.Price,
+		})
+	}
+
+	fmt.Println(orderDataResponse)
+
+	return orderDataResponse, err
 }
