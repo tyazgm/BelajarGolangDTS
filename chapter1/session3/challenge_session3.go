@@ -4,7 +4,7 @@ import "fmt"
 
 func main() {
 	var countMap map[string]int = map[string]int{}
-	word := ("Selamat pagi, Cikgu!")
+	word := ("selamat malam")
 
 	var isExist = func(key string, s string) bool {
 		return key == s
